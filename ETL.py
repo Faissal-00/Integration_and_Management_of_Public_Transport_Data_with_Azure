@@ -8,12 +8,12 @@ spark.conf.set(
 # COMMAND ----------
 
 ## List the contents of the 'raw' folder in Azure Data Lake Storage Gen2
-dbutils.fs.ls("abfss://publictransportdata@faissalmoufllastorage.dfs.core.windows.net/raw/")
+dbutils.fs.ls("abfss://publictransportdata@faissalmoufllastorage.dfs.core.windows.net/public_transport_data/raw/")
 
 # COMMAND ----------
 
 #Set data lake file location
-file_location = "abfss://publictransportdata@faissalmoufllastorage.dfs.core.windows.net/raw/"
+file_location = "abfss://publictransportdata@faissalmoufllastorage.dfs.core.windows.net/public_transport_data/raw/public-transport-data.csv"
 #read in the data to dataframe df
 df = spark.read.format("csv").option("inferSchema", "True").option("header",
 "True").option("delimeter",",").load(file_location)
