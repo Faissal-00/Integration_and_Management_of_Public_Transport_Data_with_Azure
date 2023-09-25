@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC ##Head Data
+# MAGIC #Data Lake Infrastructure Integration
 
 # COMMAND ----------
 
@@ -30,8 +30,8 @@ df.printSchema()
 
 # COMMAND ----------
 
-# unique_values = df.select('ArrivalTime').distinct().rdd.map(lambda row: row[0]).collect()
-# print(unique_values)
+# MAGIC %md
+# MAGIC #ETL processes with Azure Databricks
 
 # COMMAND ----------
 
@@ -40,7 +40,7 @@ df.printSchema()
 
 # COMMAND ----------
 
-from pyspark.sql.functions import col, expr
+from pyspark.sql.functions import col, expr, date_format
 
 # Format 'DepartureTime' to display only the time
 df = df.withColumn("DepartureTime", date_format("DepartureTime", "HH:mm"))
@@ -58,6 +58,9 @@ df = df.withColumn(
     "Duration(min)",
     (col("ArrivalHour") * 60 + col("ArrivalMinute")) - (col("DepartureHour") * 60 + col("DepartureMinute"))
 )
+
+columns_to_drop = ['ArrivalHour', 'ArrivalMinute', 'DepartureHour', 'DepartureMinute']
+df = df.drop(*columns_to_drop)
 
 # COMMAND ----------
 
@@ -96,13 +99,13 @@ display(df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ##date transformations
+# MAGIC ##Date Transformations
 
 # COMMAND ----------
 
 #Extract the year, month, day, and day of the week from the date
 
-from pyspark.sql.functions import year, month, dayofmonth, dayofweek
+from pyspark.sql.functions import to_date, year, month, dayofmonth, dayofweek
 df = df.withColumn("Date", to_date("Date", "yyyy-MM-dd"))
 df = df.withColumn("Year", year("Date"))
 df = df.withColumn("Month", month("Date"))
@@ -137,3 +140,41 @@ df = df.withColumn(
 # COMMAND ----------
 
 display(df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ##Passenger Analysis
+
+# COMMAND ----------
+
+from pyspark.sql.functions import when, lit, mean
+
+# Calculate the mean of the PassengerCount column
+mean_passenger_count = df.select(mean(df["Passengers"])).collect()[0][0]
+
+# Use the mean as the threshold to identify peak hours
+df = df.withColumn("PeakHour", when(df["Passengers"] > mean_passenger_count, "Peak").otherwise("Off-Peak"))
+
+# COMMAND ----------
+
+display(df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ##Route Analysis
+
+# COMMAND ----------
+
+from pyspark.sql.functions import avg, sum
+
+# Group by the 'Route' column and calculate mean delay, mean passengers, and total trips
+route_analysis = df.groupBy("Route").agg(
+    avg("Delay").cast("int").alias("MeanDelay"),
+    avg("Passengers").cast("int").alias("MeanPassengers"),
+    sum(lit(1)).cast("int").alias("TotalTrips")
+)
+
+# Show the route analysis
+route_analysis.show()
