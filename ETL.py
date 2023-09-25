@@ -178,3 +178,72 @@ route_analysis = df.groupBy("Route").agg(
 
 # Show the route analysis
 route_analysis.show()
+
+# COMMAND ----------
+
+# Define the path to the processed folder in your Azure Data Lake Storage
+output_folder = "abfss://publictransportdata@faissalmoufllastorage.dfs.core.windows.net/public_transport_data/processed/"
+
+# Define the file name for your processed data
+file_name = "Month1cleaned.csv"
+
+# Define the full output path including the file name
+output_path = f"{output_folder}{file_name}"
+
+# Save the DataFrame to a CSV file
+df.write.csv(output_path, header=True, mode="overwrite")
+
+# COMMAND ----------
+
+import pandas as pd
+
+# Assuming 'df' is your PySpark DataFrame
+pandasDF = df.toPandas()
+pandasDF
+
+# COMMAND ----------
+
+pandasDF.to_csv
+
+# COMMAND ----------
+
+pip install azure-storage-blob
+
+# COMMAND ----------
+
+import pandas as pd
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+
+# Convert your pandas DataFrame to a CSV file
+csv_data = pandasDF.to_csv(index=False)
+
+# Define your Azure Storage account and container information
+account_name = "faissalmoufllastorage"
+account_key = "2uDXwle3KYb3NtDIm0YEvsslYK4OGLfbU9NMo29R83NM0KTxrjNoNuhJX9VphCZHWBcZgCPzfdzL+AStx6bt1g=="
+container_name = "publictransportdata"
+
+# Create a connection to your Azure Storage account
+blob_service_client = BlobServiceClient(
+    account_url=f"https://{account_name}.dfs.core.windows.net",
+    credential=account_key
+)
+
+# Define the full path to your CSV file in the processed folder
+output_folder = "public_transport_data/processed/"
+file_name = "Month1cleaned.csv"
+output_path = f"{output_folder}{file_name}"
+
+# Get a reference to the container
+container_client = blob_service_client.get_container_client(container_name)
+
+# Upload the CSV data to the Azure Data Lake Storage
+with open(output_path, "wb") as data:
+    data.write(csv_data.encode())
+
+# Print a success message
+print(f"CSV file saved to: {output_path}")
+
+
+# COMMAND ----------
+
+
