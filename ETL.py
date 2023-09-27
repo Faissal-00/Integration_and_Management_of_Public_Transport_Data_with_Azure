@@ -6,8 +6,8 @@
 
 # Mounting data lake
 storageAccountName = "faissalmoufllastorage"
-storageAccountAccessKey = "5eYteI6hynYqMG8i5VkIfhlNSyMYul3isvgAMW+xsq7oNK0oGDDNgrIAwMG+51cCkcxt/c4o27V3+AStPNkLuA=="
-sasToken = "?sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupyx&se=2023-09-26T18:27:40Z&st=2023-09-26T10:27:40Z&spr=https&sig=M%2FPC62OOGOU7Jw8FJCUU9aLIcfjh5zXCYYXNuE9cVOw%3D"
+storageAccountAccessKey = "SSY4QLBp7RduioHh+aJUrt7TURCcFjZDfmXfIihepoQof6u5WDvFb/+jqLiN6cUBLAvl90bxqT1H+AStZwJrDw=="
+sasToken = "?sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupyx&se=2023-09-27T15:59:11Z&st=2023-09-27T07:59:11Z&spr=https&sig=O53raU88xTm%2FYCTm8Eob2v0SCRn96CdZXJ08Sy5NHSA%3D"
 blobContainerName = "publictransportdata"
 mountPoint = "/mnt/publictransportdata/"
 if not any(mount.mountPoint == mountPoint for mount in dbutils.fs.mounts()):
@@ -23,10 +23,14 @@ if not any(mount.mountPoint == mountPoint for mount in dbutils.fs.mounts()):
 
 # COMMAND ----------
 
+dbutils.fs.unmount(mountPoint)
+
+# COMMAND ----------
+
 #Configure Spark to access Azure Data Lake Storage Gen2 using the account key
 spark.conf.set(
     f"fs.azure.account.key.faissalmoufllastorage.dfs.core.windows.net", 
-    "5eYteI6hynYqMG8i5VkIfhlNSyMYul3isvgAMW+xsq7oNK0oGDDNgrIAwMG+51cCkcxt/c4o27V3+AStPNkLuA=="
+    "SSY4QLBp7RduioHh+aJUrt7TURCcFjZDfmXfIihepoQof6u5WDvFb/+jqLiN6cUBLAvl90bxqT1H+AStZwJrDw=="
 )              
 
 # List the contents of the 'raw' folder in Azure Data Lake Storage Gen2
@@ -210,3 +214,7 @@ pandasdf.to_csv(output_path, header=True)
 
 # Print a success message
 print(f"CSV file saved to: {output_path}")
+
+# COMMAND ----------
+
+

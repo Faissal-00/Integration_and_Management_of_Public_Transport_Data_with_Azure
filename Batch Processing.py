@@ -1,8 +1,8 @@
 # Databricks notebook source
 # Mounting data lake
 storageAccountName = "faissalmoufllastorage"
-storageAccountAccessKey = "5eYteI6hynYqMG8i5VkIfhlNSyMYul3isvgAMW+xsq7oNK0oGDDNgrIAwMG+51cCkcxt/c4o27V3+AStPNkLuA=="
-sasToken = "?sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupyx&se=2023-09-26T23:45:55Z&st=2023-09-26T15:45:55Z&spr=https&sig=8wXursvRA96HmAc5LCruROIYic80KW26k0VD7rn02%2BU%3D"
+storageAccountAccessKey = "SSY4QLBp7RduioHh+aJUrt7TURCcFjZDfmXfIihepoQof6u5WDvFb/+jqLiN6cUBLAvl90bxqT1H+AStZwJrDw=="
+sasToken = "?sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupyx&se=2023-09-27T15:59:11Z&st=2023-09-27T07:59:11Z&spr=https&sig=O53raU88xTm%2FYCTm8Eob2v0SCRn96CdZXJ08Sy5NHSA%3D"
 blobContainerName = "publictransportdata"
 mountPoint = "/mnt/publictransportdata/"
 if not any(mount.mountPoint == mountPoint for mount in dbutils.fs.mounts()):
@@ -18,12 +18,16 @@ if not any(mount.mountPoint == mountPoint for mount in dbutils.fs.mounts()):
 
 # COMMAND ----------
 
-# Define the paths for raw and processed folders
-raw_folder = "abfss://publictransportdata@faissalmoufllastorage.dfs.core.windows.net/public_transport_data/raw/"
-processed_folder = "abfss://publictransportdata@faissalmoufllastorage.dfs.core.windows.net/public_transport_data/processed/"
+# Define the paths for raw, processed, and archive folders
+raw_folder = "/mnt/publictransportdata/public_transport_data/raw/"
+processed_folder = "/dbfs/mnt/publictransportdata/public_transport_data/processed/"
+archive_folder = "/mnt/publictransportdata/public_transport_data/archive/"
 
 # List the contents of the 'raw' folder
 files = dbutils.fs.ls(raw_folder)
+
+# Initialize a counter to keep track of the number of files processed
+file_counter = 0
 
 # Loop through the raw data files in batches of two
 for i in range(0, len(files), 2):
@@ -35,13 +39,8 @@ for i in range(0, len(files), 2):
         df = spark.read.format("csv").option("inferSchema", "True").option("header", "True").option("delimiter", ",").load(file_location)
 
         # Apply your data transformations here
-        
-        ###Time calculations
-        
-        from pyspark.sql.functions import col, expr, date_format
 
-        # Format 'DepartureTime' to display only the time
-        df = df.withColumn("DepartureTime", date_format("DepartureTime", "HH:mm"))
+        from pyspark.sql.functions import col, expr, date_format
 
         # Format 'DepartureTime' to display only the time
         df = df.withColumn("DepartureTime", date_format("DepartureTime", "HH:mm"))
@@ -60,9 +59,6 @@ for i in range(0, len(files), 2):
         columns_to_drop = ['ArrivalHour', 'ArrivalMinute', 'DepartureHour', 'DepartureMinute']
         df = df.drop(*columns_to_drop)
 
-
-        ###COLUMN OF ARRIVALTIME
-
         from pyspark.sql.functions import col, when, expr, to_timestamp, date_format
 
         # Assuming your DataFrame is named df
@@ -71,7 +67,8 @@ for i in range(0, len(files), 2):
             when(
                 expr("substring(ArrivalTime, 1, 2) > 23"),
                 expr("concat('00', substring(ArrivalTime, 3, 5))")
-            ).otherwise(col("ArrivalTime"))
+            ).otherwise(col("ArrivalTime")
+            )
         )
 
         # Convert the 'ArrivalTime' column to a time type
@@ -80,19 +77,13 @@ for i in range(0, len(files), 2):
         # Format 'ArrivalTime' to display only the time
         df = df.withColumn("ArrivalTime", date_format("ArrivalTime", "HH:mm"))
 
-    
-        ###Date Transformations
- 
-        #Extract the year, month, day, and day of the week from the date
-
+        # Extract the year, month, day, and day of the week from the date
         from pyspark.sql.functions import to_date, year, month, dayofmonth, dayofweek
         df = df.withColumn("Date", to_date("Date", "yyyy-MM-dd"))
         df = df.withColumn("Year", year("Date"))
         df = df.withColumn("Month", month("Date"))
         df = df.withColumn("DayOfMonth", dayofmonth("Date"))
         df = df.withColumn("DayOfWeek", dayofweek("Date"))
-
-        ###Delay Analysis
 
         from pyspark.sql.functions import col, when
 
@@ -108,8 +99,6 @@ for i in range(0, len(files), 2):
             .otherwise("Unknown")
         )
 
-        ###Passenger Analysis
-
         from pyspark.sql.functions import when, lit, mean
 
         # Calculate the mean of the PassengerCount column
@@ -118,13 +107,34 @@ for i in range(0, len(files), 2):
         # Use the mean as the threshold to identify peak hours
         df = df.withColumn("PeakHour", when(df["Passengers"] > mean_passenger_count, "Peak").otherwise("Off-Peak"))
 
-
-
-        # Save the DataFrame to a CSV file in the processed folder
-        # Modify the file name to match your desired naming convention
+        # Save the DataFrame to a CSV file in the processed folder using Pandas
         file_name = "processedTransportDataOf_" + file.name
-        output_path = processed_folder + file_name
-        df.write.csv(output_path, header=True, mode="overwrite")
+        pandasdf = df.toPandas()
+
+        # Define the full output path including the file name (without /dbfs)
+        output_path = f"{processed_folder}{file_name}.csv"
+
+        # Save the DataFrame to a CSV file using Pandas
+        pandasdf.to_csv(output_path, header=True, index=False)
 
         # Print a success message
         print(f"CSV file saved to: {output_path}")
+
+        # After saving to processed, copy the file to the archive folder
+        archive_path = archive_folder + file.name
+        dbutils.fs.cp(file.path, archive_path)
+        print(f"File copied to archive: {archive_path}")
+
+        # Delete the file from the raw folder
+        dbutils.fs.rm(file.path)
+
+        # Increment the file counter
+        file_counter += 1
+
+        # Check if two files have been processed and display a message
+        if file_counter % 2 == 0:
+            print(f"Successfully processed {file_counter} files.")
+
+# COMMAND ----------
+
+dbutils.fs.unmount(mountPoint)
