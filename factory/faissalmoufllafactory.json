@@ -1,0 +1,9 @@
+{
+	"name": "faissalmoufllafactory",
+	"location": "francecentral",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "1508d193-99cb-4bbc-b3f3-1552795265bb",
+		"tenantId": "a2e466aa-4f86-4545-b5b8-97da7c8febf3"
+	}
+}
