@@ -1,0 +1,28 @@
+{
+	"name": "Automatization",
+	"properties": {
+		"activities": [
+			{
+				"name": "Automatization",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Repos/fmouffla.ext@simplonformations.onmicrosoft.com/Integration_and_Management_of_Public_Transport_Data_with_Azure/Batch Processing"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": []
+	}
+}
